@@ -7,6 +7,10 @@ ESP32_CAM_IP = '192.168.43.23'
 ESP32_CAM_URL = f'http://{ESP32_CAM_IP}/capture'
 IMAGE_PATH = 'captured.jpg'
 
+
+ESP8266_SERVER_IP = 'http://192.168.216.41'
+ESP8266_RESULT_URL = f'http://{ESP8266_SERVER_IP}/result'
+
 SERIAL_PORT = 'COM7'
 BAUD_RATE = 9600
 
@@ -53,13 +57,23 @@ try:
 
             classification = response['message']['content'].strip()
             print(f"[+] Classification: {classification}")
-
-            # 4. Send classification to Arduino
+            #4. Send classification to ESP8266
+            print("[*] Sending result to ESP8266...")
+        
+            try:
+                response = requests.post(ESP8266_RESULT_URL, data={'classification': classification})
+                if response.status_code == 200:
+                    print(f"[+] ESP8266 response: {response.text}")
+                else:
+                    print(f"[!] Failed to send result to ESP8266, status: {response.status_code}")
+            except Exception as e:
+                print(f"[!] Error sending result to ESP8266: {e}")
+            # 5. Send classification to Arduino
             print("[*] Sending result to Arduino...")
             arduino.write((classification + '\n').encode())
             print(f"[+] Sent: {classification}")
 
-            # 5. Wait for "Done" before restarting loop
+            # 6. Wait for "Done" before restarting loop
             print("[*] Waiting for Arduino to say 'Done'...")
             while True:
                 if arduino.in_waiting:
