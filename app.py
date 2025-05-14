@@ -79,12 +79,12 @@ try:
                 model='llava:7b',
                 messages=[{
                     'role': 'user',
-                    'content': 'Look at the image. If the object is food, reply with "Food". If it is not food, reply with "Non-Food". Only reply with one of those words.',
+                    'content': 'Look at the image. If the object is food, reply with "Food" If it is not food, reply with "Non-Food" Only reply with one of those words.',
                     'images': [IMAGE_PATH]
                 }]
             )
 
-            classification = response['message']['content'].strip()
+            classification = response['message']['content'].strip().rstrip('.')
             print(f"[+] Classification: {classification}")
             #4. Send classification to ESP8266
             print("[*] Sending result to ESP8266...")
