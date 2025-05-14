@@ -24,13 +24,13 @@
 #define D7 6
 
 const int thermistorPin = A1;
-const int soundPin = A0;  // Analog pin connected to SY-M213 A0
+const int soundPin = A0; // Analog pin connected to SY-M213 A0
 
 LiquidCrystal_74HC595 lcd(DP, SHCP, STCP, RS, E, D4, D5, D6, D7);
 AccelStepper stepper1 = AccelStepper(MotorInterfaceType, MP4, MP3, MP2, MP1);
 Servo myServo;
 
-const int runTime = 10000;
+const int runTime = 20000;
 unsigned long startTime = millis();
 bool triggered = false;
 
@@ -58,7 +58,8 @@ void loop()
 {
   // --- Periodic Ambient Sensor Data Sending ---
   unsigned long currentMillisLoop = millis(); // Use a different variable name to avoid conflict
-  if (currentMillisLoop - previousAmbientMillis >= ambientInterval) {
+  if (currentMillisLoop - previousAmbientMillis >= ambientInterval)
+  {
     previousAmbientMillis = currentMillisLoop;
 
     float ambientTemp = readTempC();
@@ -94,7 +95,7 @@ void loop()
       while (millis() - startTime < runTime)
       {
         stepper1.runSpeed();
-        myServo.write(90);
+        myServo.write(65);
       }
     }
     else
@@ -102,7 +103,7 @@ void loop()
       while (millis() - startTime < runTime)
       {
         stepper1.runSpeed();
-        myServo.write(40);
+        myServo.write(35);
       }
     }
 
@@ -113,7 +114,7 @@ void loop()
     int currentAudio = readAudioLevel();
 
     // Send data to Python script (post-classification) - using DATA_ prefix
-    Serial.print("DATA_TEMP:"); 
+    Serial.print("DATA_TEMP:");
     Serial.print(currentTemp);
     Serial.print(",AUDIO:");
     Serial.println(currentAudio);
@@ -151,7 +152,8 @@ void print_LCD(String item)
   delay(2000);
 }
 
-float readTempC() {
+float readTempC()
+{
   int analogValue = analogRead(thermistorPin);
 
   // Assuming a 10k thermistor with a 10k pull-up/pull-down resistor.
@@ -159,36 +161,39 @@ float readTempC() {
   // analogRead is 0-1023. Using 1023.0 for calculation if analogValue can reach 1023.
   // If your board uses a different ADC range (e.g. 4095), adjust 1023.0 accordingly.
   double resistance = 10000.0 * (1023.0 / (float)analogValue - 1.0);
-  double lnR = log(resistance);  // Natural log of resistance
+  double lnR = log(resistance); // Natural log of resistance
 
   // Steinhart-Hart equation coefficients (typical for a 10k NTC thermistor)
   // These might need adjustment for your specific thermistor model.
   const double A = 0.001129148;
   const double B = 0.000234125;
-  const double C = 0.0000000876741; 
+  const double C = 0.0000000876741;
 
   double tempK = 1.0 / (A + (B * lnR) + (C * lnR * lnR * lnR));
 
-  return (float)(tempK - 273.15);  // Convert Kelvin to Celsius
+  return (float)(tempK - 273.15); // Convert Kelvin to Celsius
 }
 
 // Reads the audio level using the readSound() function.
-int readAudioLevel() {
+int readAudioLevel()
+{
   // Call readSound which returns an average analog value (0-1023)
   float soundAnalogAverage = readSound();
-  
+
   // For now, we'll cast this float to an int for consistency with previous placeholder.
   // You might want to map this value to a more meaningful scale (e.g., pseudo dB)
   // For example: return map(soundAnalogAverage, 0, 1023, 0, 100);
-  return (int)soundAnalogAverage; 
+  return (int)soundAnalogAverage;
 }
 
 // Function to compute and return average sound level from SY-M213
-float readSound() {
+float readSound()
+{
   long sum = 0;
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 10; i++)
+  {
     sum += analogRead(soundPin);
-    delay(5);  // Small delay between readings
+    delay(5); // Small delay between readings
   }
-  return sum / 10.0;  // Return as float (average analog reading)
+  return sum / 10.0; // Return as float (average analog reading)
 }
