@@ -3,14 +3,15 @@ import ollama
 import time
 import serial
 
+# ESP32-CAM and ESP8266 IP addresses
 ESP32_CAM_IP = '192.168.216.51'
 ESP32_CAM_URL = f'http://{ESP32_CAM_IP}/capture'
-IMAGE_PATH = 'captured.jpg'
 
 ESP8266_SERVER_IP = 'http://192.168.216.41'
 ESP8266_RESULT_URL = f'{ESP8266_SERVER_IP}/result'
 ESP8266_SENSORDATA_URL = f'{ESP8266_SERVER_IP}/sensordata'
 
+IMAGE_PATH = 'captured.jpg'
 SERIAL_PORT = 'COM11'
 BAUD_RATE = 9600
 
@@ -55,12 +56,11 @@ try:
                 if trigger_received: # Check if trigger was found in this iteration
                     break # Exit the while not trigger_received loop
                 
-                time.sleep(0.1) # Polling interval if no data or no trigger
+                # Polling interval if no data or no trigger
+                time.sleep(0.1) 
 
-            # If trigger was received, continue with the rest of the cycle
-            # This part is reached ONLY if trigger_received is True
-
-            # 2. Capture image
+            # If trigger was received, continue with the rest of the cycle        
+            # 2. Capture image by requesting the GET /capture endpoint
             print("[*] Requesting image from ESP32-CAM...")
             response = requests.get(ESP32_CAM_URL, stream=True)
 
@@ -73,7 +73,7 @@ try:
                 print(f"[!] Failed to get image from ESP32-CAM, status: {response.status_code}")
                 continue
 
-            # 3. Send to Ollama
+            # 3. Send data to Ollama for classification
             print("[*] Sending image to Ollama...")
             response = ollama.chat(
                 model='llava:7b',
@@ -86,7 +86,8 @@ try:
 
             classification = response['message']['content'].strip().rstrip('.')
             print(f"[+] Classification: {classification}")
-            #4. Send classification to ESP8266
+           
+            #4. Send classification to ESP8266 for displaying on web server
             print("[*] Sending result to ESP8266...")
         
             try:
@@ -97,6 +98,7 @@ try:
                     print(f"[!] Failed to send result to ESP8266, status: {response.status_code}")
             except Exception as e:
                 print(f"[!] Error sending result to ESP8266: {e}")
+            
             # 5. Send classification to Arduino
             print("[*] Sending result to Arduino...")
             arduino.write((classification + '\n').encode())
@@ -119,7 +121,6 @@ try:
 
                         if arduino_line.startswith("DATA_TEMP:"):
                             try:
-                                # Example: DATA_TEMP:23.5,AUDIO:60
                                 parts = arduino_line.split(',') 
                                 temp_part = parts[0].split(':')[1] # Get value after "DATA_TEMP:"
                                 audio_part = parts[1].split(':')[1] # Get value after "AUDIO:"

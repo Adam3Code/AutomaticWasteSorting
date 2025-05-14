@@ -1,66 +1,57 @@
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
-#include <ESP8266WiFiMulti.h>   // Include the Wi-Fi-Multi library
-#include <ESP8266WebServer.h>   // Include the WebServer library
-#include <ESP8266mDNS.h>        // Include the mDNS library
-// #include <FS.h>        // Removed
-// #include <LittleFS.h>  // Removed
+#include <ESP8266WiFiMulti.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
 
 ESP8266WiFiMulti wifiMulti;
 // Create an instance of the server
 ESP8266WebServer server(80);
 
 const int led = D2;
+// Replace with your network credentials
+const char *ssid = "";
+const char *password = "";
 
-// --- New Counters ---
-int foodCount = 3; // Example starting value
-int nonFoodCount = 6; // Example starting value
-const int MAX_BIN_CAPACITY = 10; // Defin
+// Initialize data counters
+int foodCount = 3;
+int nonFoodCount = 6;
+const int MAX_BIN_CAPACITY = 10;
+float temperature = 23.5;
+int audioLevel = 62;
 
-float temperature = 23.5; // Simulated temperature value (°C)
-int audioLevel = 62;      // Simulated audio level (dB)
-
-// const char* IMAGE_FILE_PATH = "/latest_waste.jpg"; // Removed
-// File fsUploadFile; // Removed
-
-void handleRoot();  
-void handleLED();  
+// forward declarations
+void handleRoot();
 void handleNotFound();
-void handleResult(); // Forward declare if not already
-void handleSensorData(); // Declare the new handler
-void handleEmptyBin(); // Declare handler for emptying bins
-// void handleFileUpload(); // Removed
-// void handleServeImage(); // Removed
-// void formatLittleFS();   // Removed
+void handleResult();
+void handleSensorData();
+void handleEmptyBin();
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
   delay(1000);
-
-  // LittleFS.begin() and related removed
-  // Serial.println("LittleFS mounted successfully."); // Removed
 
   server.on("/", HTTP_GET, handleRoot);
   server.on("/result", HTTP_POST, handleResult);
   server.on("/sensordata", HTTP_POST, handleSensorData);
   server.on("/empty", HTTP_GET, handleEmptyBin);
-  // server.on(IMAGE_FILE_PATH, HTTP_GET, handleServeImage); // Removed
-  // server.on("/uploadimage", ..., handleFileUpload); // Removed
+
   server.onNotFound(handleNotFound);
 
   pinMode(led, OUTPUT);
-  digitalWrite(led,1);
-  
+  digitalWrite(led, 1);
+
   // Connect to WiFi network
   Serial.println();
 
-  wifiMulti.addAP("Majstor Bob", "ratat123");  
-  
+  wifiMulti.addAP(ssid, password);
+
   Serial.println();
   Serial.print("Connecting ...");
-  //WiFi.begin(ssid, password);
- 
-  while (wifiMulti.run() != WL_CONNECTED) {
+
+  while (wifiMulti.run() != WL_CONNECTED)
+  {
     delay(500);
     Serial.print(".");
   }
@@ -70,24 +61,28 @@ void setup() {
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
 
-  if (MDNS.begin("iot")) {              // Start the mDNS responder for esp8266.local
+  if (MDNS.begin("iot"))
+  {
     Serial.println("mDNS responder started");
-  } else {
+  }
+  else
+  {
     Serial.println("Error setting up MDNS responder!");
   }
 
   server.begin();
-  Serial.println("Server started"); 
+  Serial.println("Server started");
 }
 
-void loop() {
+void loop()
+{
   // Check if a client has connected
   server.handleClient();
-
-
 }
 
-void handleRoot() {
+// serve html for webserver
+void handleRoot()
+{
   int foodFullness = min((foodCount * 100) / MAX_BIN_CAPACITY, 100);
   int nonFoodFullness = min((nonFoodCount * 100) / MAX_BIN_CAPACITY, 100);
 
@@ -113,14 +108,12 @@ void handleRoot() {
   html += ".empty-button { display: none; margin-top: 10px; padding: 8px; color: white; border: none; border-radius: 5px; cursor: pointer; z-index:3; }";
   html += ".food .empty-button { background-color: #4CAF50; }";
   html += ".non-food .empty-button { background-color: #FFA500; }";
-  // Image container style removed
   html += ".sensor-box { padding: 20px; background-color: #2a2a2a; border-radius: 10px; text-align: center; width: 300px; }"; // Ensure this style is present if image container is removed
   html += "</style>";
   html += "</head>";
   html += "<body>";
   html += "<h1>Waste Management Status</h1>";
   html += "<div class='main-container'>";
-  // Image container div and img tag removed
   html += "<div class='bins-container'>";
   html += "<div class='bin food'>";
   html += "<div class='bin-label'><h2>Food Waste</h2></div>";
@@ -160,43 +153,52 @@ void handleRoot() {
   html += "</body>";
   html += "</html>";
 
+  // serve the html string
   server.send(200, "text/html", html);
 }
 
-void handleLED() {
-  digitalWrite(led,!digitalRead(led));
-  server.sendHeader("Location","/");
-  server.send(303);
-}
-
-void handleNotFound(){
+void handleNotFound()
+{
   server.send(404, "text/plain", "404: Not found");
 }
 
-void handleResult() {
-  if (server.hasArg("classification")) {
+void handleResult()
+{
+  // handles retrieving the result of the classification
+  if (server.hasArg("classification"))
+  {
     String classification = server.arg("classification");
     classification.toLowerCase();
 
     Serial.print("Received classification: ");
     Serial.println(classification);
 
-    if (classification == "food") {
+    if (classification == "food")
+    {
       foodCount++;
-    } else if (classification == "non-food") {
+    }
+    else if (classification == "non-food")
+    {
       nonFoodCount++;
-    } else {
+    }
+    else
+    {
       server.send(400, "text/plain", "Invalid classification value");
       return;
     }
     server.send(200, "text/plain", "Classification received");
-  } else {
+  }
+  else
+  {
     server.send(400, "text/plain", "Missing classification");
   }
 }
 
-void handleSensorData() {
-  if (server.hasArg("temperature") && server.hasArg("audio")) {
+void handleSensorData()
+{
+  // handles recieving sensor data
+  if (server.hasArg("temperature") && server.hasArg("audio"))
+  {
     String tempArg = server.arg("temperature");
     String audioArg = server.arg("audio");
 
@@ -209,24 +211,32 @@ void handleSensorData() {
     Serial.println(audioLevel);
 
     server.send(200, "text/plain", "Sensor data received");
-  } else {
+  }
+  else
+  {
     server.send(400, "text/plain", "Missing temperature or audio data arguments");
-  } }
+  }
+}
 
-void handleEmptyBin() {
+void handleEmptyBin()
+{
+  // handles the mocking of emptying a full bin
   String binToEmpty = server.arg("bin");
-  if (binToEmpty == "food") {
+  if (binToEmpty == "food")
+  {
     foodCount = 0;
     Serial.println("Food bin counter reset.");
-  } else if (binToEmpty == "nonfood" || binToEmpty == "non-food") {
+  }
+  else if (binToEmpty == "nonfood" || binToEmpty == "non-food")
+  {
     nonFoodCount = 0;
     Serial.println("Non-food bin counter reset.");
-  } else {
+  }
+  else
+  {
     server.send(400, "text/plain", "Invalid bin type specified for emptying.");
     return;
   }
   server.sendHeader("Location", "/", true);
   server.send(302, "text/plain", "");
 }
-
-// handleFileUpload, handleServeImage, and formatLittleFS functions are now removed.
