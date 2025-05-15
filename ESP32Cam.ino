@@ -6,9 +6,10 @@
 #include "camera_pins.h"
 
 // Replace with your network credentials
-const char *ssid = "DKP";
-const char *password = "12345678";
+const char *ssid = "";
+const char *password = "";
 
+// http server initialized on port 80
 WiFiServer server(80);
 
 void startCamera()
@@ -34,11 +35,12 @@ void startCamera()
     config.pin_reset = RESET_GPIO_NUM;
     config.xclk_freq_hz = 20000000;
     config.pixel_format = PIXFORMAT_JPEG;
-    config.frame_size = FRAMESIZE_QVGA; // Smaller size for faster transfer
+    // Smaller resolution for faster transfer
+    config.frame_size = FRAMESIZE_QVGA;
     config.jpeg_quality = 10;
     config.fb_count = 1;
 
-    // Camera init
+    // Try to init camera
     esp_err_t err = esp_camera_init(&config);
     if (err != ESP_OK)
     {
@@ -50,9 +52,10 @@ void startCamera()
 void setup()
 {
     Serial.begin(115200);
-    pinMode(4, OUTPUT); // Flash LED pin on AI Thinker board
+    pinMode(4, OUTPUT);
     digitalWrite(4, LOW);
 
+    // Connect to WiFi network
     WiFi.begin(ssid, password);
     Serial.print("Connecting to WiFi");
     while (WiFi.status() != WL_CONNECTED)
@@ -60,11 +63,12 @@ void setup()
         delay(500);
         Serial.print(".");
     }
-
+    // Print the IP address assigned
     Serial.println("\nWiFi connected!");
     Serial.print("Camera ready at: http://");
     Serial.println(WiFi.localIP());
 
+    // Start the Camera and HTTP server
     startCamera();
     server.begin();
 }
@@ -82,24 +86,31 @@ void loop()
         delay(1);
 
     String request = client.readStringUntil('\r');
-    client.readStringUntil('\n'); // consume newline
+    client.readStringUntil('\n');
     Serial.print("Request: ");
     Serial.println(request);
 
+    // Check if the HTTP request is for the /capture endpoint
     if (request.indexOf("GET /capture") != -1)
     {
-        digitalWrite(4, HIGH); // turn on flash
-        delay(200);            // small delay for exposure
+        // turn on flash
+        digitalWrite(4, HIGH);
+        delay(200);
 
         // Warm up dummy capture
         camera_fb_t *dummy = esp_camera_fb_get();
         if (dummy)
             esp_camera_fb_return(dummy);
+
         delay(100);
 
+        // Capture the image from camera
         camera_fb_t *fb = esp_camera_fb_get();
-        digitalWrite(4, LOW); // turn off flash
 
+        // turn off flash after capture
+        digitalWrite(4, LOW);
+
+        // If the image capture failed, send a 500 Internal Server Error
         if (!fb)
         {
             Serial.println("Camera capture failed");
@@ -111,12 +122,14 @@ void loop()
             return;
         }
 
-        // Send image to client
+        // Send a successful HTTP response with the image
         client.println("HTTP/1.1 200 OK");
         client.println("Content-Type: image/jpeg");
         client.println("Content-Length: " + String(fb->len));
         client.println("Connection: close");
         client.println();
+
+        // Write the image data directly to the client
         client.write(fb->buf, fb->len);
         esp_camera_fb_return(fb);
 
@@ -124,13 +137,14 @@ void loop()
     }
     else
     {
+        // If the request is not /capture, respond with 404 Not Found
         client.println("HTTP/1.1 404 Not Found");
         client.println("Content-Type: text/plain");
         client.println("Connection: close");
         client.println();
         client.println("Use /capture to get an image.");
     }
-
+    // Close the connection to the client
     client.stop();
     Serial.println("Client disconnected");
 }
